@@ -18,10 +18,21 @@ EXE_SRCS := $(shell find $(EXE_DIR) -name *.c)
 EXE_OBJS := $(EXE_SRCS:%=$(BUILD_DIR)/%.o)
 EXE_DEPS := $(EXE_OBJS:.o=.d)
 
-CFLAGS ?= -Wall -Wextra -fno-omit-frame-pointer -fsanitize=address -g -MMD -MP
-LDFLAGS ?= -pthread -lreadline
+CFLAGS ?= -Wall -Wextra  -MMD -MP
+DEBUG ?= -g
+SANATIZE ?= -fno-omit-frame-pointer -fsanitize=address
 
+#If you need to link against a library uncomment the line below and add the library name
+#LDFLAGS ?= -pthread -lreadline
+
+#Default to building without debug flags
 all: $(TARGET_EXEC) $(TARGET_TEST)
+
+#Build with debug flags and address sanitizer
+#https://www.gnu.org/software/make/manual/make.html#Target_002dspecific
+debug: CFLAGS += $(SANATIZE)
+debug: CFLAGS += $(DEBUG)
+debug: $(TARGET_EXEC) $(TARGET_TEST)
 
 $(TARGET_EXEC): $(OBJS) $(EXE_OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(EXE_OBJS) -o $@ $(LDFLAGS)
