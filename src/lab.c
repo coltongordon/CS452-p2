@@ -114,13 +114,13 @@ char **cmd_parse(char const *line) {
     //this part might need to be changed to work?
     int i = 0;
     char *line_copy = strdup(line);
-    //char *saveptr;
-    char *token = strtok(line_copy, " ");
+    char *saveptr;
+    char *token = strtok_r(line_copy, " ", &saveptr);
     
     // Loop through the tokens and add them to the argv array
     while (token != NULL && i < sysconf(_SC_ARG_MAX) - 1) {
         argv[i++] = strdup(token);
-        token = strtok(NULL, " ");
+        token = strtok_r(NULL, " ", &saveptr);
     }
     
     // Null terminate the array
