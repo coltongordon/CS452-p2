@@ -23,7 +23,7 @@ void sh_init(struct shell *sh) {
     // Allocate memory for the shell structure
     sh->shell_terminal = STDIN_FILENO;
     sh->shell_is_interactive = isatty(sh->shell_terminal);
-    sh->prompt = get_prompt;
+    sh->prompt = get_prompt("MY PROMPT");
     sh->shell_pgid = getpid();
     
     // Set the shell prompt
