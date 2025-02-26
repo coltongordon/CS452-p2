@@ -113,7 +113,7 @@ char *trim_white(char *line) {
     }
 
     // Pointer to the end of the string
-    char *end;
+    char *final;
 
     // Trim leading space
     while (isspace((unsigned char)*line)) line++;
@@ -122,11 +122,11 @@ char *trim_white(char *line) {
         return line;
 
     // Trim trailing space
-    end = line + strlen(line) - 1;
-    while (end > line && isspace((unsigned char)*end)) end--;
+    final = line + strlen(line) - 1;
+    while (final > line && isspace((unsigned char)*final)) final--;
 
     // Write new null terminator
-    *(end + 1) = '\0';
+    *(final + 1) = '\0';
 
     return line;
 }
@@ -208,7 +208,7 @@ void parse_args(int argc, char **argv) {
         // Check for version flag
         if(strcmp(argv[i], "-v") == 0){
             // Print version and exit
-            printf("Shell Version is: %d.%d\n", VERSION_MAJOR, VERSION_MINOR);
+            printf("The Shell Version is: %d.%d\n", VERSION_MAJOR, VERSION_MINOR);
             exit(0);
         }
     }
