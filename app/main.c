@@ -31,21 +31,36 @@ static void explain_waitpid(int status)
   }
 }
 
+// Set up signal handlers
+void setup_signal_handlers(void){
+  signal(SIGINT, SIG_IGN);
+  signal(SIGQUIT, SIG_IGN);
+  signal(SIGTSTP, SIG_IGN);
+  signal(SIGTTIN, SIG_IGN);
+  signal(SIGTTOU, SIG_IGN);
+}
+
 
 int main(int argc, char *argv[])
 {
   parse_args(argc, argv);
   struct shell sh;
   sh_init(&sh);
+
+  // Set up signal handlers
+  setup_signal_handlers();
+
   char *line = (char *)NULL;
+
+  // Set the prompt
   while ((line = readline(sh.prompt)))
   {
     // do nothing on blank lines don't save history or attempt to exec
     line = trim_white(line);
     if (!*line)
     {
-    free(line);
-    continue;
+      free(line);
+      continue;
     }
     add_history(line);
     // check to see if we are launching a built in command
@@ -53,6 +68,7 @@ int main(int argc, char *argv[])
     if (!do_builtin(&sh, cmd))
     {
       pid_t pid = fork();
+      // If fork failed we are in trouble!
       if (pid == 0)
       {
         /*This is the child process*/
@@ -65,6 +81,8 @@ int main(int argc, char *argv[])
         signal(SIGTTIN, SIG_DFL);
         signal(SIGTTOU, SIG_DFL);
         execvp(cmd[0], cmd);
+        // If execvp failed we are in trouble!
+        perror("execvp failed");
         exit(EXIT_FAILURE);
       }
       else if (pid < 0)
@@ -88,10 +106,15 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Wait pid failed with -1\n");
         explain_waitpid(status);
       }
+
       cmd_free(cmd);
       // get control of the shell
       tcsetpgrp(sh.shell_terminal, sh.shell_pgid);
     }
+    free(line);
   }
+  // Might be good to have this here :)
+  sh_destroy(&sh);
+
   exit(EXIT_SUCCESS);
 }
