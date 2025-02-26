@@ -9,7 +9,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include "readline/history.h"
-
+#include "readline/readline.h"
 
 /*Initialize the shell for use. Allocate all data structures
 * Grab control of the terminal and put the shell in its own
@@ -23,6 +23,7 @@ void sh_init(struct shell *sh) {
     // Allocate memory for the shell structure
     sh->shell_terminal = STDIN_FILENO;
     sh->shell_is_interactive = isatty(sh->shell_terminal);
+    sh->prompt = get_prompt;
     
     // Set the shell prompt
     if(sh->shell_is_interactive){
@@ -204,7 +205,7 @@ bool do_builtin(struct shell *sh, char **argv) {
         //register int i;
 
         //the_list = history_list ();
-        the_list = history_list ();
+        the_list = history_list();
           if (the_list)
             for (int i = 0; the_list[i]; i++)
               printf ("%d: %s\n", i + history_base, the_list[i]->line);

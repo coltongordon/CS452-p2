@@ -23,7 +23,7 @@ DEBUG ?= -g
 SANATIZE ?= -fno-omit-frame-pointer -fsanitize=address
 
 #If you need to link against a library uncomment the line below and add the library name
-#LDFLAGS ?= -pthread -lreadline
+LDFLAGS ?= -pthread -lreadline
 
 #Default to building without debug flags
 all: $(TARGET_EXEC) $(TARGET_TEST)
