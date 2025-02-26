@@ -8,6 +8,49 @@
 #include <sys/types.h>
 #include <pwd.h>
 
+
+/*Initialize the shell for use. Allocate all data structures
+* Grab control of the terminal and put the shell in its own
+* process group. NOTE: This function will block until the shell is
+* in its own program group. Attaching a debugger will always cause
+* this function to fail because the debugger maintains control of
+* the subprocess it is debugging.
+*/
+void sh_init(struct shell *sh) {
+
+    // Allocate memory for the shell structure
+    sh->shell_terminal = STDIN_FILENO;
+    sh->shell_is_interactive = isatty(sh->shell_terminal);
+    
+    // Set the shell prompt
+    if(sh->shell_is_interactive){
+        while(tcgetpgrp(sh->shell_terminal) != (sh->shell_pgid = getpgrp()))
+            kill(-sh->shell_pgid, SIGTTIN);
+    }
+
+    // Set the shell process group ID
+    sh->shell_pgid = getpid();
+
+    // Set the shell process group ID
+    if(setpgid(sh->shell_pgid, sh->shell_pgid) < 0){
+        perror("setpgid");
+        exit(1);
+    }
+}
+
+
+// Destroy shell. Free any allocated memory and resources and exit normally.
+void sh_destroy(struct shell *sh) {
+
+    // Free any allocated memory
+    free(sh->prompt);
+
+    // Exit the shell, don't want this
+    // This caused too many problems, saw it already in main
+    //exit(0);
+}
+
+
 /*Set the shell prompt. This function will attempt to load a prompt
 * from the requested environment variable, if the environment variable is
 * not set a default prompt of "shell>" is returned. This function calls
@@ -156,48 +199,6 @@ bool do_builtin(struct shell *sh, char **argv) {
 
     // If no built-in command was found, return false
     return false;
-}
-
-
-/*Initialize the shell for use. Allocate all data structures
-* Grab control of the terminal and put the shell in its own
-* process group. NOTE: This function will block until the shell is
-* in its own program group. Attaching a debugger will always cause
-* this function to fail because the debugger maintains control of
-* the subprocess it is debugging.
-*/
-void sh_init(struct shell *sh) {
-
-    // Allocate memory for the shell structure
-    sh->shell_terminal = STDIN_FILENO;
-    sh->shell_is_interactive = isatty(sh->shell_terminal);
-    
-    // Set the shell prompt
-    if(sh->shell_is_interactive){
-        while(tcgetpgrp(sh->shell_terminal) != (sh->shell_pgid = getpgrp()))
-            kill(-sh->shell_pgid, SIGTTIN);
-    }
-
-    // Set the shell process group ID
-    sh->shell_pgid = getpid();
-
-    // Set the shell process group ID
-    if(setpgid(sh->shell_pgid, sh->shell_pgid) < 0){
-        perror("setpgid");
-        exit(1);
-    }
-}
-
-
-// Destroy shell. Free any allocated memory and resources and exit normally.
-void sh_destroy(struct shell *sh) {
-
-    // Free any allocated memory
-    free(sh->prompt);
-
-    // Exit the shell, don't want this
-    // This caused too many problems, saw it already in main
-    //exit(0);
 }
 
 
