@@ -28,18 +28,18 @@ char *get_prompt(const char *env) {
 int change_dir(char **dir) {
     if (dir[1] == NULL){
         // No argument, change to home directory
-        char *home = getenv("HOME");
-        if (home == NULL) {
+        char *myHome = getenv("HOME");
+        if (myHome == NULL) {
             fprintf(stderr, "cd: HOME not set\n");
             return -1;
         }
         // If HOME is not set, get the home directory from passwd
         // struct passwd *pw = getpwnam(getlogin());
-        if (!home) {
+        if (!myHome) {
             struct passwd *pw = getpwuid(getuid());
-            home = pw ? pw->pw_dir : NULL;
+            myHome = pw ? pw->pw_dir : NULL;
         }
-        return chdir(home);
+        return chdir(myHome);
     }
     return chdir(dir[1]);
     // If chdir fails, it will return -1 and set errno
@@ -69,6 +69,7 @@ char **cmd_parse(char const *line) {
     char *line_copy = strdup(line);
     char *saveptr;
     char *token = strtok(line_copy, " ", &saveptr);
+    
     // Loop through the tokens and add them to the argv array
     while (token != NULL && i < ARG_MAX - 1) {
         argv[i++] = strdup(token);
@@ -195,7 +196,7 @@ void sh_destroy(struct shell *sh) {
     free(sh->prompt);
 
     // Exit the shell, don't want this
-    // This caused too many problems
+    // This caused too many problems, saw it already in main
     //exit(0);
 }
 
