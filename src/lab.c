@@ -24,6 +24,7 @@ void sh_init(struct shell *sh) {
     sh->shell_terminal = STDIN_FILENO;
     sh->shell_is_interactive = isatty(sh->shell_terminal);
     sh->prompt = get_prompt;
+    sh->shell_pgid = getpid();
     
     // Set the shell prompt
     if(sh->shell_is_interactive){
