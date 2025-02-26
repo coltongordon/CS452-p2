@@ -1,21 +1,24 @@
 #include "lab.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 /*Set the shell prompt. This function will attempt to load a prompt
 * from the requested environment variable, if the environment variable is
 * not set a default prompt of "shell>" is returned. This function calls
 * malloc internally and the caller must free the resulting string.*/
 char *get_prompt(const char *env) {
-    const char *prompt = getenv(env);
+    char *prompt = getenv(env);
     if (prompt == NULL) {
         prompt = "shell>";
     }
-    char *result = malloc(strlen(prompt) + 1);
-    if (result == NULL) {
-        perror("malloc");
-        return NULL;
-    }
-    strcpy(result, prompt);
-    return result;
+    // Returns a copy of the prompt
+    return strdup(prompt);
 }
 
 
@@ -23,23 +26,23 @@ char *get_prompt(const char *env) {
 * call chdir. With no arguments the users home directory is used as the
 * directory to change to.*/
 int change_dir(char **dir) {
-    const char *home_dir = getenv("HOME");
-    if (dir == NULL || *dir == NULL) {
-        if (home_dir == NULL) {
-            fprintf(stderr, "cd: HOME environment variable not set\n");
+    if (dir[1] == NULL){
+        // No argument, change to home directory
+        char *home = getenv("HOME");
+        if (home == NULL) {
+            fprintf(stderr, "cd: HOME not set\n");
             return -1;
         }
-        if (chdir(home_dir) != 0) {
-            perror("cd");
-            return -1;
+        // If HOME is not set, get the home directory from passwd
+        // struct passwd *pw = getpwnam(getlogin());
+        if (!home) {
+            struct passwd *pw = getpwuid(getuid());
+            home = pw ? pw->pw_dir : NULL;
         }
-    } else {
-        if (chdir(*dir) != 0) {
-            perror("cd");
-            return -1;
-        }
+        return chdir(home);
     }
-    return 0;
+    return chdir(dir[1]);
+    // If chdir fails, it will return -1 and set errno
 }
 
 
@@ -48,50 +51,54 @@ int change_dir(char **dir) {
 * This function allocates memory that must be reclaimed with the cmd_free
 * function.*/
 char **cmd_parse(char const *line) {
-    int arg_max = sysconf(_SC_ARG_MAX);
-    char **argv = malloc(sizeof(char *) * (arg_max + 1));
+    // Check for NULL
+    if (line == NULL) {
+        return NULL;
+    }
+
+    // Allocate memory for the command line
+    char **argv = malloc(sizeof(char*) * ARG_MAX);
     if (argv == NULL) {
         perror("malloc");
         return NULL;
     }
 
-    char *token;
+    // Tokenize the line
+    //this part might need to be changed to work?
+    int i = 0;
     char *line_copy = strdup(line);
-    if (line_copy == NULL) {
-        perror("strdup");
-        free(argv);
-        return NULL;
+    char *saveptr;
+    char *token = strtok(line_copy, " ", &saveptr);
+    // Loop through the tokens and add them to the argv array
+    while (token != NULL && i < ARG_MAX - 1) {
+        argv[i++] = strdup(token);
+        token = strtok(NULL, " ", &saveptr);
     }
+    
+    // Null terminate the array
+    argv[i] = NULL;
 
-    int argc = 0;
-    token = strtok(line_copy, " \t\n");
-    while (token != NULL && argc < arg_max) {
-        argv[argc] = strdup(token);
-        if (argv[argc] == NULL) {
-            perror("strdup");
-            for (int i = 0; i < argc; i++) {
-                free(argv[i]);
-            }
-            free(argv);
-            free(line_copy);
-            return NULL;
-        }
-        argc++;
-        token = strtok(NULL, " \t\n");
-    }
-    argv[argc] = NULL;
-
+    // Free the line copy
     free(line_copy);
+
     return argv;
 }
 
 
 //Free the line that was constructed with parse_cmd
 void cmd_free(char **line) {
-    if (line != NULL) {
-        free(*line);
-        *line = NULL;
+    // Check for NULL
+    if (line == NULL) {
+        return;
     }
+
+    // Free each argument
+    for (int i = 0; line[i]; i++) {
+        free(line[i]);
+    }
+
+    // Free the array itself
+    free(line);
 }
 
 
@@ -100,6 +107,11 @@ void cmd_free(char **line) {
 * the argument line so that all printable chars are moved to the
 * front of the string*/
 char *trim_white(char *line) {
+    if (line == NULL) {
+        return NULL;
+    }
+
+    // Pointer to the end of the string
     char *end;
 
     // Trim leading space
@@ -125,29 +137,23 @@ char *trim_white(char *line) {
 * true. If the first argument is NOT a built in command this function will
 * return false.*/
 bool do_builtin(struct shell *sh, char **argv) {
-    if (argv[0] == NULL) {
+    
+    // Check for NULL or empty command
+    if (argv == NULL || argv[0] == NULL) {
         return false;
     }
 
-    if (strcmp(argv[0], "exit") == 0) {
-        sh_destroy(sh);
-        return true;
-    } else if (strcmp(argv[0], "cd") == 0) {
-        if (argv[1] == NULL) {
-            fprintf(stderr, "cd: expected argument\n");
-        } else {
-            if (chdir(argv[1]) != 0) {
-                perror("cd");
-            }
-        }
-        return true;
-    } else if (strcmp(argv[0], "jobs") == 0) {
-        // Handle jobs command
-        // This is a placeholder for actual jobs handling code
-        printf("jobs command executed\n");
-        return true;
+    // Check for built-in commands
+    if(strcmp(argv[0], "exit") == 0) {
+        exit(0);
     }
 
+    // Check for change directory command
+    if(strcmp(argv[0], "cd") == 0) {
+        return change_dir(argv) == 0;
+    }
+
+    // If no built-in command was found, return false
     return false;
 }
 
@@ -160,76 +166,49 @@ bool do_builtin(struct shell *sh, char **argv) {
 * the subprocess it is debugging.
 */
 void sh_init(struct shell *sh) {
-    if (sh == NULL) {
-        return;
+
+    // Allocate memory for the shell structure
+    sh->shell_terminal = STDIN_FILENO;
+    sh->shell_is_interactive = isatty(sh->shell_terminal);
+    
+    // Set the shell prompt
+    if(sh->shell_is_interactive){
+        while(tcgetpgrp(sh->shell_terminal) != (sh->shell_pgid = getpgrp()))
+            kill(-sh->shell_pgid, SIGTTIN);
     }
 
-    // Allocate memory for command history and current command
-    sh->command_history = (char **)malloc(sizeof(char *) * COMMAND_HISTORY_SIZE);
-    if (sh->command_history == NULL) {
-        perror("Failed to allocate memory for command history");
+    // Set the shell process group ID
+    sh->shell_pgid = getpid();
+
+    // Set the shell process group ID
+    if(setpgid(sh->shell_pgid, sh->shell_pgid) < 0){
+        perror("setpgid");
         exit(1);
     }
-
-    sh->current_command = (char *)malloc(sizeof(char) * COMMAND_BUFFER_SIZE);
-    if (sh->current_command == NULL) {
-        perror("Failed to allocate memory for current command");
-        free(sh->command_history);
-        exit(1);
-    }
-
-    // Initialize other shell fields as needed
-    sh->history_count = 0;
-    sh->current_command[0] = '\0';
-
-    // Grab control of the terminal
-    if (tcgetpgrp(STDIN_FILENO) != getpid()) {
-        while (tcgetpgrp(STDIN_FILENO) != (sh->pgid = getpgrp())) {
-            kill(-sh->pgid, SIGTTIN);
-        }
-    }
-
-    // Put the shell in its own process group
-    sh->pgid = getpid();
-    if (setpgid(sh->pgid, sh->pgid) < 0) {
-        perror("Couldn't put the shell in its own process group");
-        exit(1);
-    }
-
-    // Take control of the terminal
-    tcsetpgrp(STDIN_FILENO, sh->pgid);
-
-    // Save default terminal attributes for restoration later
-    tcgetattr(STDIN_FILENO, &sh->tmodes);
 }
 
 
 // Destroy shell. Free any allocated memory and resources and exit normally.
 void sh_destroy(struct shell *sh) {
-    if (sh == NULL) {
-        return;
-    }
 
-    // Free any allocated memory within the shell structure
-    if (sh->command_history) {
-        free(sh->command_history);
-    }
+    // Free any allocated memory
+    free(sh->prompt);
 
-    if (sh->current_command) {
-        free(sh->current_command);
-    }
-
-    // Free the shell structure itself
-    free(sh);
-
-    // Exit normally
-    exit(0);
+    // Exit the shell, don't want this
+    // This caused too many problems
+    //exit(0);
 }
 
 
 // Parse command line args from the user when the shell was launched
 void parse_args(int argc, char **argv) {
+    // If the version flag is found, print the version and exit
     for (int i = 0; i < argc; i++) {
-        printf("Argument %d: %s\n", i, argv[i]);
+        // Check for version flag
+        if(strcmp(argv[i], "-v") == 0){
+            // Print version and exit
+            printf("Shell Version is: %d.%d\n", VERSION_MAJOR, VERSION_MINOR);
+            exit(0);
+        }
     }
 }
