@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <signal.h>
+#include "readline/history.h"
 
 
 /*Initialize the shell for use. Allocate all data structures
@@ -198,10 +199,17 @@ bool do_builtin(struct shell *sh, char **argv) {
         return change_dir(argv) == 0;
     }
 
-    the_list = history_list ();
+    if(strcmp(argv[0], "jobs") == 0) {
+        HIST_ENTRY **the_list;
+        //register int i;
+
+        //the_list = history_list ();
+        the_list = history_list ();
           if (the_list)
-            for (i = 0; the_list[i]; i++)
+            for (int i = 0; the_list[i]; i++)
               printf ("%d: %s\n", i + history_base, the_list[i]->line);
+        return true;
+    }
 
     // If no built-in command was found, return false
     return false;
