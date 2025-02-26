@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <signal.h>
 
 
 /*Initialize the shell for use. Allocate all data structures
@@ -100,7 +101,7 @@ char **cmd_parse(char const *line) {
     }
 
     // Allocate memory for the command line
-    char **argv = malloc(sizeof(char*) * ARG_MAX);
+    char **argv = malloc(sizeof(char*) * sysconf(_SC_ARG_MAX));
     if (argv == NULL) {
         perror("malloc");
         return NULL;
@@ -110,13 +111,13 @@ char **cmd_parse(char const *line) {
     //this part might need to be changed to work?
     int i = 0;
     char *line_copy = strdup(line);
-    char *saveptr;
-    char *token = strtok(line_copy, " ", &saveptr);
+    //char *saveptr;
+    char *token = strtok(line_copy, " ");
     
     // Loop through the tokens and add them to the argv array
-    while (token != NULL && i < ARG_MAX - 1) {
+    while (token != NULL && i < sysconf(_SC_ARG_MAX) - 1) {
         argv[i++] = strdup(token);
-        token = strtok(NULL, " ", &saveptr);
+        token = strtok(NULL, " ");
     }
     
     // Null terminate the array
@@ -197,6 +198,11 @@ bool do_builtin(struct shell *sh, char **argv) {
         return change_dir(argv) == 0;
     }
 
+    the_list = history_list ();
+          if (the_list)
+            for (i = 0; the_list[i]; i++)
+              printf ("%d: %s\n", i + history_base, the_list[i]->line);
+
     // If no built-in command was found, return false
     return false;
 }
@@ -209,7 +215,7 @@ void parse_args(int argc, char **argv) {
         // Check for version flag
         if(strcmp(argv[i], "-v") == 0){
             // Print version and exit
-            printf("The Shell Version is: %d.%d\n", VERSION_MAJOR, VERSION_MINOR);
+            printf("The Shell Version is: %d.%d\n", lab_VERSION_MAJOR, lab_VERSION_MAJOR);
             exit(0);
         }
     }
