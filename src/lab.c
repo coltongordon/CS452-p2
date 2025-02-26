@@ -33,7 +33,7 @@ void sh_init(struct shell *sh) {
     }
 
     // Set the shell process group ID
-    sh->shell_pgid = getpid();
+    //sh->shell_pgid = getpid();
 
     // Set the shell process group ID
     if(setpgid(sh->shell_pgid, sh->shell_pgid) < 0){
