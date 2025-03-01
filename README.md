@@ -1,4 +1,4 @@
-# Makefile Project Template
+# Shell Project
 
 Steps to configure, build, run, and test the project.
 
@@ -26,4 +26,10 @@ In order to use git send-mail you need to run the following command:
 
 ```bash
 make install-deps
+```
+
+## Run this next
+
+```bash
+./myprogram
 ```
